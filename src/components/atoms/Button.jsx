@@ -6,6 +6,7 @@ const variants = {
   neutral: 'bg-white text-ink border border-line hover:bg-panel',
   success: 'bg-done text-white hover:bg-green-700',
   subtle: 'bg-transparent text-ink hover:bg-white',
+  destructive: 'bg-red-600 text-white hover:bg-red-700',
 };
 
 export default function Button({

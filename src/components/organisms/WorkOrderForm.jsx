@@ -19,8 +19,8 @@ export default function WorkOrderForm({ onCreate }) {
   const submit = (event) => {
     event.preventDefault();
     const sampleNumber = form.sampleNumber.trim();
-    if (!/^\d{4}$/.test(sampleNumber)) {
-      setError('El numero de muestra debe tener 4 digitos.');
+    if (!sampleNumber) {
+      setError('El numero de muestra no puede estar vacio.');
       return;
     }
     if (form.selectedTests.length === 0) {
@@ -78,11 +78,10 @@ export default function WorkOrderForm({ onCreate }) {
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  sampleNumber: event.target.value.replace(/\D/g, '').slice(0, 4),
+                  sampleNumber: event.target.value,
                 }))
               }
-              placeholder="0000"
-              inputMode="numeric"
+              placeholder="Escribe texto o numeros"
             />
           </Field>
           <Field label="Aclaraciones">

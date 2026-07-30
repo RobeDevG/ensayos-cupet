@@ -1,5 +1,5 @@
-import { Check, ChevronDown, Play, SquarePen } from 'lucide-react';
-import React from 'react';
+import { Check, ChevronDown, Play } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Button from '../atoms/Button';
 import StatusBadge from '../atoms/StatusBadge';
 import TestResultForm from './TestResultForm';
@@ -9,6 +9,68 @@ import { addMinutes, formatDateTime, getReportValue, round } from '../../utils/c
 function formatReport(value) {
   if (value === null || value === undefined || value === '') return '-';
   return typeof value === 'number' ? round(value, 4) : value;
+}
+
+function playAlertSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.5);
+  } catch (error) {
+    // Silently ignore if browser blocks audio
+  }
+}
+
+function formatSeconds(seconds) {
+  if (seconds === null || seconds === undefined) return '-';
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function TimerAlert({ startedAt, minutes, active }) {
+  const [remaining, setRemaining] = useState(() => {
+    if (!startedAt || !minutes) return null;
+    const target = new Date(startedAt).getTime() + minutes * 60_000;
+    const diff = Math.max(0, Math.round((target - Date.now()) / 1000));
+    return diff;
+  });
+
+  const alerted = useMemo(() => ({ value: false }), []);
+
+  useEffect(() => {
+    if (!startedAt || !minutes || !active) return undefined;
+    const update = () => {
+      const target = new Date(startedAt).getTime() + minutes * 60_000;
+      const diff = Math.max(0, Math.round((target - Date.now()) / 1000));
+      setRemaining(diff);
+      if (diff === 0 && !alerted.value) {
+        playAlertSound();
+        alerted.value = true;
+      }
+    };
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [startedAt, minutes, active, alerted]);
+
+  if (!startedAt || minutes == null || !active) return null;
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="text-sm text-slate-600">Cronómetro: {formatSeconds(remaining)}</div>
+      <div className="mt-2 text-sm font-semibold text-action">
+        {remaining === 0 ? 'Tiempo cumplido' : 'Tiempo restante'}
+      </div>
+    </div>
+  );
 }
 
 export default function SampleSummary({ samples, onUpdateTest, onStartTest, onFinishTest }) {
@@ -105,11 +167,22 @@ export default function SampleSummary({ samples, onUpdateTest, onStartTest, onFi
                           >
                             Terminar
                           </Button>
-                          <Button icon={SquarePen} variant="neutral" disabled title="Edicion activa en los campos">
-                            Editando
+                          <Button
+                            icon={Check}
+                            variant="neutral"
+                            title={
+                              test.status === 'finished'
+                                ? 'Los resultados pueden editarse luego de terminar'
+                                : 'Resultados editables'
+                            }
+                          >
+                            {test.status === 'finished' ? 'Editar resultados' : 'Editable'}
                           </Button>
                         </div>
                       </div>
+                      {test.status === 'started' && definition.hasTimer ? (
+                        <TimerAlert startedAt={test.startedAt} minutes={definition.timerMinutes} active={test.status === 'started'} />
+                      ) : null}
                       <TestResultForm
                         test={test}
                         onChange={(results) => onUpdateTest(sample.id, test.id, { results })}
