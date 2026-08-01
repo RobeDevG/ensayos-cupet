@@ -1,16 +1,19 @@
-import { Beaker, CheckCircle2, ClipboardList, LayoutDashboard, Trash2 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+﻿import { Beaker, CheckCircle2, ClipboardList, LayoutDashboard, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Button from './components/atoms/Button';
 import OperationsBoard from './components/organisms/OperationsBoard';
 import SampleSummary from './components/organisms/SampleSummary';
 import WorkOrderForm from './components/organisms/WorkOrderForm';
+import { TEST_TYPES } from './data/tests';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { playTimerAlert, showTimerNotification } from './utils/timerAlerts';
 
 const tabs = [
-  { id: 'summary', label: 'Resumen', icon: ClipboardList },
-  { id: 'board', label: 'Montados', icon: LayoutDashboard },
-  { id: 'finished', label: 'Terminadas', icon: CheckCircle2 },
-  { id: 'new', label: 'Registrar', icon: Beaker },
+  { id: 'summary', label: 'Resumen', icon: ClipboardList, path: '/summary' },
+  { id: 'board', label: 'Montados', icon: LayoutDashboard, path: '/board' },
+  { id: 'finished', label: 'Terminadas', icon: CheckCircle2, path: '/finished' },
+  { id: 'new', label: 'Registrar', icon: Beaker, path: '/new' },
 ];
 
 function updateSampleCompletion(sample) {
@@ -21,9 +24,9 @@ function updateSampleCompletion(sample) {
   };
 }
 
-export default function App() {
+function AppContent() {
+  const location = useLocation();
   const [samples, setSamples] = useLocalStorage('cupet-lab-samples', []);
-  const [activeTab, setActiveTab] = useState('summary');
   const [isResetOpen, setResetOpen] = useState(false);
 
   const sortedSamples = useMemo(
@@ -31,23 +34,25 @@ export default function App() {
     [samples],
   );
 
-  const filteredSamples = useMemo(() => {
-    if (activeTab === 'finished') {
-      return sortedSamples.filter((sample) =>
-        sample.tests.length > 0 && sample.tests.every((test) => test.status === 'finished'),
-      );
-    }
-    if (activeTab === 'summary') {
-      return sortedSamples.filter(
-        (sample) => sample.tests.some((test) => test.status !== 'finished'),
-      );
-    }
-    return sortedSamples;
-  }, [activeTab, sortedSamples]);
+  const summarySamples = useMemo(
+    () => sortedSamples.filter((sample) => sample.tests.some((test) => test.status !== 'finished')),
+    [sortedSamples],
+  );
+
+  const finishedSamples = useMemo(
+    () => sortedSamples.filter(
+      (sample) => sample.tests.length > 0 && sample.tests.every((test) => test.status === 'finished'),
+    ),
+    [sortedSamples],
+  );
+
+  const activeTab = tabs.find((tab) => tab.path === location.pathname) || tabs[0];
+
+  const navigate = useNavigate();
 
   const createSample = (sample) => {
     setSamples((current) => [sample, ...current]);
-    setActiveTab('summary');
+    navigate('/summary');
   };
 
   const updateTest = (sampleId, testId, patch) => {
@@ -66,6 +71,7 @@ export default function App() {
     updateTest(sampleId, testId, {
       status: 'started',
       startedAt: new Date().toISOString(),
+      timerAlertedAt: null,
     });
   };
 
@@ -87,6 +93,29 @@ export default function App() {
     );
   };
 
+  useEffect(() => {
+    const timeoutIds = [];
+
+    samples.forEach((sample) => {
+      sample.tests.forEach((test) => {
+        const timerMinutes = TEST_TYPES[test.type]?.timerMinutes;
+        if (test.status !== 'started' || !test.startedAt || !timerMinutes || test.timerAlertedAt) return;
+
+        const remainingMs = new Date(test.startedAt).getTime() + timerMinutes * 60_000 - Date.now();
+        const notify = () => {
+          playTimerAlert();
+          showTimerNotification(sample.sampleNumber);
+          updateTest(sample.id, test.id, { timerAlertedAt: new Date().toISOString() });
+        };
+
+        if (remainingMs <= 0) notify();
+        else timeoutIds.push(window.setTimeout(notify, remainingMs));
+      });
+    });
+
+    return () => timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+  }, [samples]);
+
   return (
     <div className="min-h-screen bg-[#eef1ea]">
       <header className="border-b border-line bg-white">
@@ -100,19 +129,20 @@ export default function App() {
               <p className="text-sm text-slate-600">Control continuo para tecnico de laboratorio</p>
             </div>
           </div>
-          <nav className="flex rounded-lg border border-line bg-panel p-1">
+          <nav className="grid w-full grid-cols-2 gap-1 rounded-lg border border-line bg-panel p-1 sm:grid-cols-4">
             {tabs.map((tab) => (
-              <button
+              <NavLink
                 key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold transition ${
-                  activeTab === tab.id ? 'bg-white text-action shadow-sm' : 'text-slate-600 hover:text-ink'
-                }`}
+                to={tab.path}
+                className={({ isActive }) =>
+                  `inline-flex min-w-0 h-10 flex-1 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold text-center transition ${
+                    isActive ? 'bg-white text-action shadow-sm' : 'text-slate-600 hover:text-ink'
+                  }`
+                }
               >
                 <tab.icon className="h-4 w-4" aria-hidden="true" />
-                {tab.label}
-              </button>
+                <span className="whitespace-normal break-words">{tab.label}</span>
+              </NavLink>
             ))}
           </nav>
         </div>
@@ -121,61 +151,70 @@ export default function App() {
       <main className="mx-auto grid max-w-7xl gap-5 px-4 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-ink">
-              {activeTab === 'summary' && 'Vista resumen'}
-              {activeTab === 'board' && 'Ensayos montados'}
-              {activeTab === 'new' && 'Registrar orden'}
-            </h2>
+            <h2 className="text-2xl font-bold text-ink">{activeTab.label}</h2>
             <p className="text-sm text-slate-600">
-              {activeTab === 'summary' && 'Muestras y ensayos; abre cada ensayo para ver datos y resultados.'}
-              {activeTab === 'board' && 'Tabla de trabajo para ver faltantes, iniciados y objetivos de tiempo.'}
-              {activeTab === 'new' && 'Carga las ordenes de trabajo a medida que llegan.'}
+              {activeTab.id === 'summary' && 'Muestras y ensayos; abre cada ensayo para ver datos y resultados.'}
+              {activeTab.id === 'board' && 'Tabla de trabajo para ver faltantes, iniciados y objetivos de tiempo.'}
+              {activeTab.id === 'finished' && 'Revisa las muestras que ya tienen todos los ensayos terminados.'}
+              {activeTab.id === 'new' && 'Carga las ordenes de trabajo a medida que llegan.'}
             </p>
           </div>
-          {activeTab !== 'new' ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button icon={Beaker} variant="primary" onClick={() => setActiveTab('new')}>
-                Nueva muestra
+          <div className="flex flex-wrap items-center gap-2">
+            <NavLink
+              to="/new"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-action px-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              <Beaker className="h-4 w-4" aria-hidden="true" />
+              Nueva muestra
+            </NavLink>
+            {samples.length > 0 ? (
+              <Button
+                icon={Trash2}
+                variant="subtle"
+                onClick={() => setResetOpen(true)}
+              >
+                Resetear todo
               </Button>
-              {samples.length > 0 ? (
-                <Button
-                  icon={Trash2}
-                  variant="subtle"
-                  onClick={() => setResetOpen(true)}
-                >
-                  Resetear todo
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
-        {activeTab === 'summary' ? (
-          <SampleSummary
-            samples={filteredSamples}
-            filter="summary"
-            onUpdateTest={updateTest}
-            onStartTest={startTest}
-            onFinishTest={finishTest}
+        <Routes>
+          <Route
+            path="/summary"
+            element={
+              <SampleSummary
+                samples={summarySamples}
+                filter="summary"
+                onUpdateTest={updateTest}
+                onStartTest={startTest}
+                onFinishTest={finishTest}
+              />
+            }
           />
-        ) : null}
-        {activeTab === 'board' ? <OperationsBoard samples={sortedSamples} /> : null}
-        {activeTab === 'finished' ? (
-          <SampleSummary
-            samples={filteredSamples}
-            filter="finished"
-            onUpdateTest={updateTest}
-            onStartTest={startTest}
-            onFinishTest={finishTest}
+          <Route path="/board" element={<OperationsBoard samples={sortedSamples} />} />
+          <Route
+            path="/finished"
+            element={
+              <SampleSummary
+                samples={finishedSamples}
+                filter="finished"
+                onUpdateTest={updateTest}
+                onStartTest={startTest}
+                onFinishTest={finishTest}
+              />
+            }
           />
-        ) : null}
-        {activeTab === 'new' ? <WorkOrderForm onCreate={createSample} /> : null}
+          <Route path="/new" element={<WorkOrderForm onCreate={createSample} />} />
+          <Route path="*" element={<Navigate to="/summary" replace />} />
+        </Routes>
+
         {isResetOpen ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-8">
             <div className="w-full max-w-lg rounded-2xl border border-line bg-white p-6 shadow-2xl">
               <h2 className="text-xl font-bold text-ink">Confirmar reinicio</h2>
               <p className="mt-3 text-slate-600">
-                Esta acción eliminará todas las muestras y ensayos guardados. ¿Seguro que quieres continuar?
+                Esta accion eliminara todas las muestras y ensayos guardados. Seguro que quieres continuar?
               </p>
               <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <Button variant="subtle" onClick={() => setResetOpen(false)}>
@@ -186,6 +225,7 @@ export default function App() {
                   onClick={() => {
                     setSamples([]);
                     setResetOpen(false);
+                    navigate('/summary');
                   }}
                 >
                   Reiniciar todo
@@ -196,5 +236,13 @@ export default function App() {
         ) : null}
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }

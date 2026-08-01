@@ -32,19 +32,63 @@ export default function OperationsBoard({ samples }) {
       </div>
 
       <div className="rounded-lg border border-line bg-white shadow-soft">
-        <div className="flex items-center gap-2 border-b border-line px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           <Activity className="h-5 w-5 text-brand" aria-hidden="true" />
           <h2 className="text-lg font-bold text-ink">Ensayos en proceso y faltantes</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-sm">
-            <thead className="bg-panel text-left text-xs uppercase tracking-wide text-slate-500">
+        <div className="grid divide-y divide-line md:hidden">
+          {visibleTests.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-slate-500">
+              No hay ensayos pendientes o iniciados.
+            </p>
+          ) : (
+            visibleTests.map((test) => {
+              const definition = TEST_TYPES[test.type];
+              const target = definition.timerMinutes
+                ? addMinutes(test.startedAt, definition.timerMinutes)
+                : null;
+
+              return (
+                <article key={test.id} className="grid gap-3 px-3 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="break-words font-bold text-ink">Muestra {test.sampleNumber}</div>
+                      {test.sampleNotes ? (
+                        <div className="break-words text-xs text-slate-500">{test.sampleNotes}</div>
+                      ) : null}
+                    </div>
+                    <StatusBadge status={test.status} />
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <FlaskConical className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+                    {definition.name}
+                  </div>
+                  <dl className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <dt className="text-slate-500">Inicio</dt>
+                      <dd className="mt-1 font-semibold text-slate-700">{formatDateTime(test.startedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Hora objetivo</dt>
+                      <dd className="mt-1 font-semibold text-action">
+                        {test.status === 'started' && target ? formatDateTime(target) : '-'}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })
+          )}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[640px] max-w-full border-collapse text-sm">
+            <thead className="bg-panel text-left text-[10px] uppercase tracking-wide text-slate-500 sm:text-xs">
               <tr>
-                <th className="px-4 py-3">Muestra</th>
-                <th className="px-4 py-3">Ensayo</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Inicio</th>
-                <th className="px-4 py-3">Hora objetivo</th>
+                <th className="px-3 py-3">Muestra</th>
+                <th className="px-3 py-3">Ensayo</th>
+                <th className="px-3 py-3">Estado</th>
+                <th className="px-3 py-3">Inicio</th>
+                <th className="px-3 py-3">Hora objetivo</th>
               </tr>
             </thead>
             <tbody>

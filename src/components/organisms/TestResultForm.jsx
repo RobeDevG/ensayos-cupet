@@ -236,9 +236,9 @@ export default function TestResultForm({ test, onChange }) {
         </div>
         <div className="rounded-lg border border-line bg-white p-3">
           <ResultLine label="Tiempo" value={calc.timeSeconds} unit="s" />
-          <ResultLine label="Cte capilar" value={calc.constant} />
-          <ResultLine label="Viscosidad SFS" value={calc.sfs} />
-          <ResultLine label="Viscosidad cSt" value={calc.cst} strong />
+          <ResultLine label="Cte capilar" value={calc.constant.toFixed(6)} />
+          <ResultLine label="Viscosidad SFS" value={calc.sfs} precision={6} />
+          <ResultLine label="Viscosidad cSt" value={calc.cst} precision={6} strong />
         </div>
       </div>
     );

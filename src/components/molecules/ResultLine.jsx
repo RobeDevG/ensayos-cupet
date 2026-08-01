@@ -2,9 +2,9 @@ import React from 'react';
 import clsx from '../../utils/clsx';
 import { round } from '../../utils/calculations';
 
-export default function ResultLine({ label, value, unit, strong, ok }) {
+export default function ResultLine({ label, value, unit, strong, ok, precision = 4 }) {
   const display =
-    typeof value === 'number' && Number.isFinite(value) ? round(value, 4) : value || '-';
+    typeof value === 'number' && Number.isFinite(value) ? round(value, precision) : value || '-';
 
   return (
     <div
