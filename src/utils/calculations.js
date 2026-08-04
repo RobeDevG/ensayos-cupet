@@ -15,6 +15,7 @@ export const parseLabTimeToSeconds = (value) => {
   const normalized = String(value).trim().replace(',', '.');
   const [minutesPart, secondsPart] = normalized.split(':');
   if (secondsPart === undefined) return toNumber(normalized);
+  if (secondsPart === '') return null;
   const minutes = Number(minutesPart);
   const seconds = Number(secondsPart);
   if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;

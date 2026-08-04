@@ -153,7 +153,7 @@ export default function SampleSummary({ samples, filter, onUpdateTest, onStartTe
                       </div>
                     </summary>
 
-                    <div className="grid gap-4 bg-panel px-3 py-4 sm:px-4">
+                    <div className="grid min-w-0 gap-4 bg-panel px-3 py-4 sm:px-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="text-sm text-slate-600">
                           Iniciar y terminar guardan la hora de este equipo.
@@ -207,7 +207,7 @@ export default function SampleSummary({ samples, filter, onUpdateTest, onStartTe
                           Resultados cerrados. Usa Editar resultados para modificarlos.
                         </p>
                       ) : null}
-                      <fieldset disabled={resultsLocked} className={resultsLocked ? 'opacity-70' : ''}>
+                      <fieldset disabled={resultsLocked} className={`min-w-0 ${resultsLocked ? 'opacity-70' : ''}`}>
                         <TestResultForm
                           test={test}
                           onChange={(results) => onUpdateTest(sample.id, test.id, { results })}

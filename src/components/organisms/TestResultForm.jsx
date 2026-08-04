@@ -25,6 +25,13 @@ function updateProduct(results, product, field, value) {
   };
 }
 
+function formatLabTimeInput(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 6);
+  if (digits.length <= 2) return digits.length === 2 ? `${digits}:` : digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4)},${digits.slice(4)}`;
+}
+
 export default function TestResultForm({ test, onChange }) {
   const setResults = (patch) => onChange({ ...test.results, ...patch });
 
@@ -50,7 +57,9 @@ export default function TestResultForm({ test, onChange }) {
           <Field label="Tiempo 1" hint="Formato mm:ss,cc. Ej: 10:08,78">
             <Input
               value={test.results.time1}
-              onChange={(event) => setResults({ time1: event.target.value })}
+              onChange={(event) => setResults({ time1: formatLabTimeInput(event.target.value) })}
+              inputMode="numeric"
+              maxLength={8}
               placeholder="10:08,78"
             />
           </Field>
@@ -64,7 +73,9 @@ export default function TestResultForm({ test, onChange }) {
           <Field label="Tiempo 2" hint="Formato mm:ss,cc">
             <Input
               value={test.results.time2}
-              onChange={(event) => setResults({ time2: event.target.value })}
+              onChange={(event) => setResults({ time2: formatLabTimeInput(event.target.value) })}
+              inputMode="numeric"
+              maxLength={8}
               placeholder="10:09,12"
             />
           </Field>
@@ -229,7 +240,9 @@ export default function TestResultForm({ test, onChange }) {
           <Field label="Tiempo" hint="Formato mm:ss,cc">
             <Input
               value={test.results.time}
-              onChange={(event) => setResults({ time: event.target.value })}
+              onChange={(event) => setResults({ time: formatLabTimeInput(event.target.value) })}
+              inputMode="numeric"
+              maxLength={8}
               placeholder="10:08,78"
             />
           </Field>
@@ -253,8 +266,8 @@ export default function TestResultForm({ test, onChange }) {
     ];
 
     return (
-      <div className="overflow-x-auto rounded-lg border border-line bg-white">
-        <table className="w-full min-w-[760px] text-sm">
+      <div className="w-full max-w-full overflow-x-auto rounded-lg border border-line bg-white">
+        <table className="w-max min-w-[760px] text-sm">
           <thead className="bg-panel text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-3 py-3">Producto</th>
